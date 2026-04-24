@@ -22,6 +22,8 @@ const ReaderManager = {
             isPlaying: false,
             playInterval: null,
             scrollInterval: null,
+            scrollAccumulator: 0,
+            sessionReadingTime: 0,
             settings: {
                 fontSize: 16,
                 lineHeight: 1.8,
@@ -54,7 +56,13 @@ const ReaderManager = {
         });
         
         document.querySelectorAll('.reader-panel').forEach(panel => {
-            panel.classList.toggle('active', parseInt(panel.id.split('-')[1]) === readerId);
+            const panelId = parseInt(panel.id.split('-')[1]);
+            const isActive = panelId === readerId;
+            panel.classList.toggle('active', isActive);
+            
+            if (!this.isDualMode) {
+                panel.style.display = isActive ? 'flex' : 'none';
+            }
         });
         
         this.updateSettingsUI();
@@ -63,29 +71,28 @@ const ReaderManager = {
     toggleDualMode(enabled) {
         this.isDualMode = enabled;
         const container = document.getElementById('reader-container');
+        const reader1 = document.getElementById('reader-1');
         const reader2 = document.getElementById('reader-2');
         
         if (enabled) {
             container.classList.add('dual-reader');
-            if (reader2) {
-                reader2.style.display = 'flex';
-                reader2.classList.add('dual-mode');
-            }
-            const reader1 = document.getElementById('reader-1');
             if (reader1) {
                 reader1.classList.add('dual-mode');
+                reader1.style.display = 'flex';
+            }
+            if (reader2) {
+                reader2.classList.add('dual-mode');
+                reader2.style.display = 'flex';
             }
         } else {
             container.classList.remove('dual-reader');
-            if (reader2) {
-                reader2.style.display = 'none';
-                reader2.classList.remove('dual-mode');
-            }
-            const reader1 = document.getElementById('reader-1');
             if (reader1) {
                 reader1.classList.remove('dual-mode');
             }
-            this.setActiveReader(1);
+            if (reader2) {
+                reader2.classList.remove('dual-mode');
+            }
+            this.setActiveReader(this.activeReaderId);
         }
     },
     
@@ -101,11 +108,22 @@ const ReaderManager = {
             this.currentReadingTime += 1;
             this.updateReadingTimeDisplay();
             
-            Object.values(this.readers).forEach(reader => {
-                if (reader.currentBook) {
-                    Storage.updateReadingTime(reader.currentBook.id, 1);
+            if (this.isDualMode) {
+                Object.values(this.readers).forEach(reader => {
+                    if (reader.currentBook) {
+                        reader.sessionReadingTime += 1;
+                        Storage.updateReadingTime(reader.currentBook.id, 1);
+                        this.updateReaderTimeDisplay(reader.id);
+                    }
+                });
+            } else {
+                const activeReader = this.getActiveReader();
+                if (activeReader && activeReader.currentBook) {
+                    activeReader.sessionReadingTime += 1;
+                    Storage.updateReadingTime(activeReader.currentBook.id, 1);
+                    this.updateReaderTimeDisplay(activeReader.id);
                 }
-            });
+            }
         }, 1000);
     },
     
@@ -144,6 +162,23 @@ const ReaderManager = {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     },
     
+    updateReaderTimeDisplay(readerId) {
+        const reader = this.readers[readerId];
+        if (!reader) return;
+        
+        const currentTimeEl = document.querySelector(`.current-time-value[data-reader="${readerId}"]`);
+        const totalTimeEl = document.querySelector(`.total-time-value[data-reader="${readerId}"]`);
+        
+        if (currentTimeEl) {
+            currentTimeEl.textContent = this.formatTime(reader.sessionReadingTime);
+        }
+        
+        if (totalTimeEl && reader.currentBook) {
+            const totalTime = Storage.getReadingTime(reader.currentBook.id);
+            totalTimeEl.textContent = this.formatTime(totalTime + reader.sessionReadingTime);
+        }
+    },
+    
     async loadBook(readerId, book) {
         const reader = this.readers[readerId];
         if (!reader) return false;
@@ -151,6 +186,7 @@ const ReaderManager = {
         reader.currentBook = book;
         reader.currentChapterIndex = book.currentChapter || 0;
         reader.currentPageIndex = book.currentPage || 0;
+        reader.sessionReadingTime = 0;
         
         if (book.chapters && book.chapters.length > 0) {
             await this.loadChapter(readerId, reader.currentChapterIndex);
@@ -167,6 +203,8 @@ const ReaderManager = {
         }
         
         Storage.addHistory(book);
+        
+        this.updateReaderTimeDisplay(readerId);
         
         if (!this.readingTimer) {
             this.startReadingTimer();
@@ -472,6 +510,8 @@ const ReaderManager = {
             clearInterval(reader.scrollInterval);
         }
         
+        reader.scrollAccumulator = 0;
+        
         reader.scrollInterval = setInterval(() => {
             const maxScroll = content.scrollHeight - content.clientHeight;
             if (content.scrollTop >= maxScroll) {
@@ -480,8 +520,15 @@ const ReaderManager = {
                     this.stopAutoPlay(readerId);
                 }
             } else {
-                content.scrollTop += reader.settings.autoScrollSpeed / 60;
-                this.onScroll(readerId);
+                const scrollPerFrame = reader.settings.autoScrollSpeed / 60;
+                reader.scrollAccumulator += scrollPerFrame;
+                
+                if (reader.scrollAccumulator >= 1) {
+                    const scrollAmount = Math.floor(reader.scrollAccumulator);
+                    content.scrollTop += scrollAmount;
+                    reader.scrollAccumulator -= scrollAmount;
+                    this.onScroll(readerId);
+                }
             }
         }, 1000 / 60);
     },
@@ -568,15 +615,13 @@ const ReaderManager = {
             readerContent.style.fontSize = `${reader.settings.fontSize}px`;
             readerContent.style.lineHeight = reader.settings.lineHeight;
         }
-        
-        this.updateSettingsUI();
     },
     
-    updateSettingsUI() {
-        const activeReader = this.getActiveReader();
-        if (!activeReader) return;
+    updateSettingsUI(readerId) {
+        const reader = readerId ? this.getReader(readerId) : this.getActiveReader();
+        if (!reader) return;
         
-        const settings = activeReader.settings;
+        const settings = reader.settings;
         
         const fontSizeSlider = document.getElementById('font-size-slider');
         const fontSizeDisplay = document.getElementById('font-size-display');
@@ -774,7 +819,7 @@ const Reader = {
     
     updateSettings(newSettings) {
         const targetRadios = document.querySelectorAll('input[name="settings-target"]');
-        let target = 'current';
+        let target = 'reader1';
         targetRadios.forEach(radio => {
             if (radio.checked) target = radio.value;
         });
@@ -783,8 +828,13 @@ const Reader = {
             Object.keys(ReaderManager.readers).forEach(id => {
                 ReaderManager.updateSettings(parseInt(id), newSettings);
             });
-        } else {
-            return ReaderManager.updateSettings(ReaderManager.activeReaderId, newSettings);
+            ReaderManager.updateSettingsUI(1);
+        } else if (target === 'reader1') {
+            ReaderManager.updateSettings(1, newSettings);
+            ReaderManager.updateSettingsUI(1);
+        } else if (target === 'reader2') {
+            ReaderManager.updateSettings(2, newSettings);
+            ReaderManager.updateSettingsUI(2);
         }
     },
     

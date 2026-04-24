@@ -576,6 +576,27 @@ body {
     background: var(--accent-hover) !important;
 }
 
+.reading-time-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.reading-time-display .time-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.reading-time-display .current-time-value,
+.reading-time-display .total-time-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: monospace;
+}
+
 .scroll-speed-control {
     display: flex;
     align-items: center;
