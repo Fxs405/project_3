@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电子阅读器</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <h1>📚 电子阅读器</h1>
+            <div class="header-actions">
+                <button id="btn-library" class="btn-icon">📖 我的书架</button>
+                <button id="btn-history" class="btn-icon">📋 阅读记录</button>
+                <button id="btn-settings" class="btn-icon">⚙️ 设置</button>
+            </div>
+        </header>
+
+        <div id="bookshelf-view" class="view active">
+            <div class="view-header">
+                <h2>我的书架</h2>
+                <div class="bookshelf-actions">
+                    <button id="btn-add-folder" class="btn-secondary">📁 新建文件夹</button>
+                    <button id="btn-upload" class="btn-primary">📤 上传书籍</button>
+                </div>
+            </div>
+            
+            <div class="bookshelf-container">
+                <div class="folder-sidebar">
+                    <div class="folder-item folder-all active" data-folder="all">
+                        <span class="folder-icon">📚</span>
+                        <span class="folder-name">全部书籍</span>
+                    </div>
+                    <div id="folder-list" class="folder-list"></div>
+                </div>
+                
+                <div class="bookshelf-content">
+                    <div id="bookshelf-list" class="bookshelf">
+                        <div class="empty-state">
+                            <p>书架空空如也，快去上传书籍吧！</p>
+                            <button id="btn-upload-empty" class="btn-primary" onclick="App.triggerUpload()">📤 上传第一本书</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reader-view" class="view">
+            <div id="reader-tabs" class="reader-tabs">
+                <div class="reader-tab active" data-tab="1">
+                    <span class="tab-title">阅读器 1</span>
+                </div>
+                <div class="reader-tab" data-tab="2">
+                    <span class="tab-title">阅读器 2</span>
+                </div>
+                <div class="reader-mode-toggle">
+                    <label class="mode-toggle-label">
+                        <input type="checkbox" id="dual-mode-toggle">
+                        <span class="mode-toggle-text">双栏阅读</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="reader-container" class="reader-container">
+                <div id="reader-1" class="reader-panel active">
+                    <div class="reader-header">
+                        <button class="btn-icon select-book-btn" data-reader="1">📖 选择书籍</button>
+                        <span id="reader-title-1" class="reader-title"></span>
+                        <span id="reader-chapter-1" class="reader-chapter"></span>
+                    </div>
+                    <div class="reader-content-wrapper">
+                        <div id="reader-content-1" class="reader-content"></div>
+                    </div>
+                    <div class="reader-controls">
+                        <div class="progress-bar">
+                            <input type="range" class="progress-slider" data-reader="1" min="0" max="100" value="0">
+                            <span class="progress-text">0%</span>
+                        </div>
+                        <div class="control-buttons">
+                            <button class="btn-icon prev-btn" data-reader="1">◀</button>
+                            <button class="btn-icon play-btn" data-reader="1">▶️</button>
+                            <button class="btn-icon next-btn" data-reader="1">▶</button>
+                            <button class="btn-icon chapters-btn" data-reader="1">📑</button>
+                        </div>
+                        <div class="scroll-speed-control">
+                            <span class="speed-label">滚动速度:</span>
+                            <button class="btn-icon speed-decrease" data-reader="1">-</button>
+                            <span class="speed-value" data-reader="1">30</span>
+                            <button class="btn-icon speed-increase" data-reader="1">+</button>
+                            <span class="speed-unit">像素/秒</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="reader-2" class="reader-panel">
+                    <div class="reader-header">
+                        <button class="btn-icon select-book-btn" data-reader="2">📖 选择书籍</button>
+                        <span id="reader-title-2" class="reader-title"></span>
+                        <span id="reader-chapter-2" class="reader-chapter"></span>
+                    </div>
+                    <div class="reader-content-wrapper">
+                        <div id="reader-content-2" class="reader-content"></div>
+                    </div>
+                    <div class="reader-controls">
+                        <div class="progress-bar">
+                            <input type="range" class="progress-slider" data-reader="2" min="0" max="100" value="0">
+                            <span class="progress-text">0%</span>
+                        </div>
+                        <div class="control-buttons">
+                            <button class="btn-icon prev-btn" data-reader="2">◀</button>
+                            <button class="btn-icon play-btn" data-reader="2">▶️</button>
+                            <button class="btn-icon next-btn" data-reader="2">▶</button>
+                            <button class="btn-icon chapters-btn" data-reader="2">📑</button>
+                        </div>
+                        <div class="scroll-speed-control">
+                            <span class="speed-label">滚动速度:</span>
+                            <button class="btn-icon speed-decrease" data-reader="2">-</button>
+                            <span class="speed-value" data-reader="2">30</span>
+                            <button class="btn-icon speed-increase" data-reader="2">+</button>
+                            <span class="speed-unit">像素/秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="global-reading-controls" class="global-reading-controls">
+                <div class="reading-time-info">
+                    <span>📊 本次阅读: <span id="current-reading-time">00:00:00</span></span>
+                    <span>📚 累计阅读: <span id="total-reading-time">00:00:00</span></span>
+                </div>
+                <div class="global-control-buttons">
+                    <button id="btn-back-library" class="btn-icon">🏠 返回书架</button>
+                    <button id="btn-reader-settings" class="btn-icon">Aa 设置</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="history-view" class="view">
+            <div class="view-header">
+                <h2>阅读记录</h2>
+                <button id="btn-clear-history" class="btn-secondary">清空记录</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
+        </div>
+    </div>
+
+    <div id="chapter-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>章节列表</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="chapter-list" class="chapter-list"></div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>阅读设置</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="settings-group">
+                <label>应用到</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="settings-target" value="current" checked> 当前阅读器</label>
+                    <label><input type="radio" name="settings-target" value="both"> 所有阅读器</label>
+                </div>
+            </div>
+            <div class="settings-group">
+                <label>字体大小</label>
+                <div class="font-size-controls">
+                    <button id="btn-font-decrease" class="btn-icon">-</button>
+                    <span id="font-size-display">16px</span>
+                    <button id="btn-font-increase" class="btn-icon">+</button>
+                </div>
+                <input type="range" id="font-size-slider" min="12" max="32" value="16">
+            </div>
+            <div class="settings-group">
+                <label>行间距</label>
+                <input type="range" id="line-height-slider" min="1.2" max="2.5" step="0.1" value="1.8">
+            </div>
+            <div class="settings-group">
+                <label>翻页方式</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="page-mode" value="scroll" checked> 滚动</label>
+                    <label><input type="radio" name="page-mode" value="page"> 翻页</label>
+                </div>
+            </div>
+            <div class="settings-group">
+                <label>阅读主题</label>
+                <div class="theme-options">
+                    <button class="theme-btn" data-theme="light" style="background: #fff; color: #333;">白天</button>
+                    <button class="theme-btn" data-theme="dark" style="background: #1a1a1a; color: #ccc;">夜间</button>
+                    <button class="theme-btn" data-theme="sepia" style="background: #f4ecd8; color: #5c4b37;">护眼</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="folder-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>新建文件夹</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="settings-group">
+                <label>文件夹名称</label>
+                <input type="text" id="folder-name-input" class="folder-input" placeholder="请输入文件夹名称">
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-folder" class="btn-secondary">取消</button>
+                <button id="btn-confirm-folder" class="btn-primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="select-book-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>选择书籍</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="book-select-list" id="book-select-list"></div>
+        </div>
+    </div>
+
+    <input type="file" id="file-input" accept=".txt,.epub" style="display: none;">
+
+    <script src="js/storage.js"></script>
+    <script src="js/parser.js"></script>
+    <script src="js/reader.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
