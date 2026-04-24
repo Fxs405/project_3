@@ -23,6 +23,7 @@ const ReaderManager = {
             playInterval: null,
             scrollInterval: null,
             scrollAccumulator: 0,
+            sessionReadingTime: 0,
             settings: {
                 fontSize: 16,
                 lineHeight: 1.8,
@@ -110,13 +111,17 @@ const ReaderManager = {
             if (this.isDualMode) {
                 Object.values(this.readers).forEach(reader => {
                     if (reader.currentBook) {
+                        reader.sessionReadingTime += 1;
                         Storage.updateReadingTime(reader.currentBook.id, 1);
+                        this.updateReaderTimeDisplay(reader.id);
                     }
                 });
             } else {
                 const activeReader = this.getActiveReader();
                 if (activeReader && activeReader.currentBook) {
+                    activeReader.sessionReadingTime += 1;
                     Storage.updateReadingTime(activeReader.currentBook.id, 1);
+                    this.updateReaderTimeDisplay(activeReader.id);
                 }
             }
         }, 1000);
@@ -157,6 +162,23 @@ const ReaderManager = {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     },
     
+    updateReaderTimeDisplay(readerId) {
+        const reader = this.readers[readerId];
+        if (!reader) return;
+        
+        const currentTimeEl = document.querySelector(`.current-time-value[data-reader="${readerId}"]`);
+        const totalTimeEl = document.querySelector(`.total-time-value[data-reader="${readerId}"]`);
+        
+        if (currentTimeEl) {
+            currentTimeEl.textContent = this.formatTime(reader.sessionReadingTime);
+        }
+        
+        if (totalTimeEl && reader.currentBook) {
+            const totalTime = Storage.getReadingTime(reader.currentBook.id);
+            totalTimeEl.textContent = this.formatTime(totalTime + reader.sessionReadingTime);
+        }
+    },
+    
     async loadBook(readerId, book) {
         const reader = this.readers[readerId];
         if (!reader) return false;
@@ -164,6 +186,7 @@ const ReaderManager = {
         reader.currentBook = book;
         reader.currentChapterIndex = book.currentChapter || 0;
         reader.currentPageIndex = book.currentPage || 0;
+        reader.sessionReadingTime = 0;
         
         if (book.chapters && book.chapters.length > 0) {
             await this.loadChapter(readerId, reader.currentChapterIndex);
@@ -180,6 +203,8 @@ const ReaderManager = {
         }
         
         Storage.addHistory(book);
+        
+        this.updateReaderTimeDisplay(readerId);
         
         if (!this.readingTimer) {
             this.startReadingTimer();
@@ -590,15 +615,13 @@ const ReaderManager = {
             readerContent.style.fontSize = `${reader.settings.fontSize}px`;
             readerContent.style.lineHeight = reader.settings.lineHeight;
         }
-        
-        this.updateSettingsUI();
     },
     
-    updateSettingsUI() {
-        const activeReader = this.getActiveReader();
-        if (!activeReader) return;
+    updateSettingsUI(readerId) {
+        const reader = readerId ? this.getReader(readerId) : this.getActiveReader();
+        if (!reader) return;
         
-        const settings = activeReader.settings;
+        const settings = reader.settings;
         
         const fontSizeSlider = document.getElementById('font-size-slider');
         const fontSizeDisplay = document.getElementById('font-size-display');
@@ -805,10 +828,13 @@ const Reader = {
             Object.keys(ReaderManager.readers).forEach(id => {
                 ReaderManager.updateSettings(parseInt(id), newSettings);
             });
+            ReaderManager.updateSettingsUI(1);
         } else if (target === 'reader1') {
-            return ReaderManager.updateSettings(1, newSettings);
+            ReaderManager.updateSettings(1, newSettings);
+            ReaderManager.updateSettingsUI(1);
         } else if (target === 'reader2') {
-            return ReaderManager.updateSettings(2, newSettings);
+            ReaderManager.updateSettings(2, newSettings);
+            ReaderManager.updateSettingsUI(2);
         }
     },
     

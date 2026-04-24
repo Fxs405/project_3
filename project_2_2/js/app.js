@@ -143,13 +143,36 @@ const App = {
             });
         });
         
+        const getSelectedTargetReaderId = () => {
+            const targetRadios = document.querySelectorAll('input[name="settings-target"]');
+            let target = 'reader1';
+            targetRadios.forEach(radio => {
+                if (radio.checked) target = radio.value;
+            });
+            if (target === 'reader1') return 1;
+            if (target === 'reader2') return 2;
+            return ReaderManager.activeReaderId;
+        };
+        
+        const getSelectedTargetReader = () => {
+            return ReaderManager.getReader(getSelectedTargetReaderId());
+        };
+        
+        document.querySelectorAll('input[name="settings-target"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                ReaderManager.updateSettingsUI(getSelectedTargetReaderId());
+            });
+        });
+        
         document.getElementById('btn-font-increase').addEventListener('click', () => {
-            const newSize = Math.min(ReaderManager.getActiveReader().settings.fontSize + 2, 32);
+            const reader = getSelectedTargetReader();
+            const newSize = Math.min(reader.settings.fontSize + 2, 32);
             Reader.updateSettings({ fontSize: newSize });
         });
         
         document.getElementById('btn-font-decrease').addEventListener('click', () => {
-            const newSize = Math.max(ReaderManager.getActiveReader().settings.fontSize - 2, 12);
+            const reader = getSelectedTargetReader();
+            const newSize = Math.max(reader.settings.fontSize - 2, 12);
             Reader.updateSettings({ fontSize: newSize });
         });
         
