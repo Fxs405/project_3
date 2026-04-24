@@ -107,9 +107,17 @@ const ReaderManager = {
             this.currentReadingTime += 1;
             this.updateReadingTimeDisplay();
             
-            const activeReader = this.getActiveReader();
-            if (activeReader && activeReader.currentBook) {
-                Storage.updateReadingTime(activeReader.currentBook.id, 1);
+            if (this.isDualMode) {
+                Object.values(this.readers).forEach(reader => {
+                    if (reader.currentBook) {
+                        Storage.updateReadingTime(reader.currentBook.id, 1);
+                    }
+                });
+            } else {
+                const activeReader = this.getActiveReader();
+                if (activeReader && activeReader.currentBook) {
+                    Storage.updateReadingTime(activeReader.currentBook.id, 1);
+                }
             }
         }, 1000);
     },
@@ -788,7 +796,7 @@ const Reader = {
     
     updateSettings(newSettings) {
         const targetRadios = document.querySelectorAll('input[name="settings-target"]');
-        let target = 'current';
+        let target = 'reader1';
         targetRadios.forEach(radio => {
             if (radio.checked) target = radio.value;
         });
@@ -797,8 +805,10 @@ const Reader = {
             Object.keys(ReaderManager.readers).forEach(id => {
                 ReaderManager.updateSettings(parseInt(id), newSettings);
             });
-        } else {
-            return ReaderManager.updateSettings(ReaderManager.activeReaderId, newSettings);
+        } else if (target === 'reader1') {
+            return ReaderManager.updateSettings(1, newSettings);
+        } else if (target === 'reader2') {
+            return ReaderManager.updateSettings(2, newSettings);
         }
     },
     
