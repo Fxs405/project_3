@@ -22,6 +22,7 @@ const ReaderManager = {
             isPlaying: false,
             playInterval: null,
             scrollInterval: null,
+            scrollAccumulator: 0,
             settings: {
                 fontSize: 16,
                 lineHeight: 1.8,
@@ -54,7 +55,13 @@ const ReaderManager = {
         });
         
         document.querySelectorAll('.reader-panel').forEach(panel => {
-            panel.classList.toggle('active', parseInt(panel.id.split('-')[1]) === readerId);
+            const panelId = parseInt(panel.id.split('-')[1]);
+            const isActive = panelId === readerId;
+            panel.classList.toggle('active', isActive);
+            
+            if (!this.isDualMode) {
+                panel.style.display = isActive ? 'flex' : 'none';
+            }
         });
         
         this.updateSettingsUI();
@@ -63,29 +70,28 @@ const ReaderManager = {
     toggleDualMode(enabled) {
         this.isDualMode = enabled;
         const container = document.getElementById('reader-container');
+        const reader1 = document.getElementById('reader-1');
         const reader2 = document.getElementById('reader-2');
         
         if (enabled) {
             container.classList.add('dual-reader');
-            if (reader2) {
-                reader2.style.display = 'flex';
-                reader2.classList.add('dual-mode');
-            }
-            const reader1 = document.getElementById('reader-1');
             if (reader1) {
                 reader1.classList.add('dual-mode');
+                reader1.style.display = 'flex';
+            }
+            if (reader2) {
+                reader2.classList.add('dual-mode');
+                reader2.style.display = 'flex';
             }
         } else {
             container.classList.remove('dual-reader');
-            if (reader2) {
-                reader2.style.display = 'none';
-                reader2.classList.remove('dual-mode');
-            }
-            const reader1 = document.getElementById('reader-1');
             if (reader1) {
                 reader1.classList.remove('dual-mode');
             }
-            this.setActiveReader(1);
+            if (reader2) {
+                reader2.classList.remove('dual-mode');
+            }
+            this.setActiveReader(this.activeReaderId);
         }
     },
     
@@ -101,11 +107,18 @@ const ReaderManager = {
             this.currentReadingTime += 1;
             this.updateReadingTimeDisplay();
             
-            Object.values(this.readers).forEach(reader => {
-                if (reader.currentBook) {
-                    Storage.updateReadingTime(reader.currentBook.id, 1);
+            if (this.isDualMode) {
+                Object.values(this.readers).forEach(reader => {
+                    if (reader.currentBook) {
+                        Storage.updateReadingTime(reader.currentBook.id, 1);
+                    }
+                });
+            } else {
+                const activeReader = this.getActiveReader();
+                if (activeReader && activeReader.currentBook) {
+                    Storage.updateReadingTime(activeReader.currentBook.id, 1);
                 }
-            });
+            }
         }, 1000);
     },
     
@@ -472,6 +485,8 @@ const ReaderManager = {
             clearInterval(reader.scrollInterval);
         }
         
+        reader.scrollAccumulator = 0;
+        
         reader.scrollInterval = setInterval(() => {
             const maxScroll = content.scrollHeight - content.clientHeight;
             if (content.scrollTop >= maxScroll) {
@@ -480,8 +495,15 @@ const ReaderManager = {
                     this.stopAutoPlay(readerId);
                 }
             } else {
-                content.scrollTop += reader.settings.autoScrollSpeed / 60;
-                this.onScroll(readerId);
+                const scrollPerFrame = reader.settings.autoScrollSpeed / 60;
+                reader.scrollAccumulator += scrollPerFrame;
+                
+                if (reader.scrollAccumulator >= 1) {
+                    const scrollAmount = Math.floor(reader.scrollAccumulator);
+                    content.scrollTop += scrollAmount;
+                    reader.scrollAccumulator -= scrollAmount;
+                    this.onScroll(readerId);
+                }
             }
         }, 1000 / 60);
     },
@@ -774,7 +796,7 @@ const Reader = {
     
     updateSettings(newSettings) {
         const targetRadios = document.querySelectorAll('input[name="settings-target"]');
-        let target = 'current';
+        let target = 'reader1';
         targetRadios.forEach(radio => {
             if (radio.checked) target = radio.value;
         });
@@ -783,8 +805,10 @@ const Reader = {
             Object.keys(ReaderManager.readers).forEach(id => {
                 ReaderManager.updateSettings(parseInt(id), newSettings);
             });
-        } else {
-            return ReaderManager.updateSettings(ReaderManager.activeReaderId, newSettings);
+        } else if (target === 'reader1') {
+            return ReaderManager.updateSettings(1, newSettings);
+        } else if (target === 'reader2') {
+            return ReaderManager.updateSettings(2, newSettings);
         }
     },
     

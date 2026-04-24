@@ -118,14 +118,14 @@ const App = {
         document.querySelectorAll('.speed-decrease').forEach(btn => {
             btn.addEventListener('click', () => {
                 const readerId = parseInt(btn.dataset.reader);
-                ReaderManager.updateScrollSpeed(readerId, -5);
+                ReaderManager.updateScrollSpeed(readerId, -1);
             });
         });
         
         document.querySelectorAll('.speed-increase').forEach(btn => {
             btn.addEventListener('click', () => {
                 const readerId = parseInt(btn.dataset.reader);
-                ReaderManager.updateScrollSpeed(readerId, 5);
+                ReaderManager.updateScrollSpeed(readerId, 1);
             });
         });
         
